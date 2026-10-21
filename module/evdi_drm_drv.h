@@ -164,6 +164,11 @@ int evdi_painter_ddcci_response_ioctl(struct drm_device *drm_dev, void *data,
 int evdi_painter_enable_cursor_events_ioctl(struct drm_device *drm_dev, void *data,
 					  struct drm_file *file);
 
+int evdi_painter_acquire_frame_ioctl(struct drm_device *drm_dev, void *data,
+				   struct drm_file *file);
+int evdi_painter_release_frame_ioctl(struct drm_device *drm_dev, void *data,
+				   struct drm_file *file);
+
 int evdi_painter_init(struct evdi_device *evdi);
 void evdi_painter_cleanup(struct evdi_painter *painter);
 void evdi_painter_set_scanout_buffer(struct evdi_painter *painter,

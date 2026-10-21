@@ -136,4 +136,6 @@ struct drm_evdi_event_ddcci_data {
 #define DRM_IOCTL_EVDI_ENABLE_CURSOR_EVENTS DRM_IOWR(DRM_COMMAND_BASE +  \
 	DRM_EVDI_ENABLE_CURSOR_EVENTS, struct drm_evdi_enable_cursor_events)
 
+#include "evdi_shared_capture.h"
+
 #endif /* __EVDI_UAPI_DRM_H__ */
