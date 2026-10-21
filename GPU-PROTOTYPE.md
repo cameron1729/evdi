@@ -1,7 +1,9 @@
 # Experimental GPU capture branch
 
-This branch preserves the EVDI changes developed alongside Vino's
-`gpu-encoder-prototype` branch. Its base is upstream `v1.15.1`, commit
+This branch preserves the EVDI changes developed alongside
+[Vino's `gpu-encoder-prototype` branch](https://github.com/cameron1729/Vino/tree/gpu-encoder-prototype).
+The [Vino handover](https://github.com/cameron1729/Vino/blob/gpu-encoder-prototype/docs/gpu-handover.md)
+records the current integration status and next work. Its EVDI base is upstream `v1.15.1`, commit
 `33b7b3c9f7c77157c2b1b0c5a40cebe19b8ba110`. All 41 module source files at
 that base matched the installed package and the isolated build input exactly.
 
