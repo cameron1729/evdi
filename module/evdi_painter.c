@@ -35,6 +35,7 @@
 #include <linux/dma-buf.h>
 #include <linux/vt_kern.h>
 #include <linux/vmalloc.h>
+#include <linux/overflow.h>
 #ifdef EVDI_HAVE_COMPILER_ATTRIBUTES_H
 #include <linux/compiler_attributes.h>
 #endif
@@ -94,6 +95,12 @@ struct evdi_event_ddcci_data_pending {
 #define MAX_EDID_SIZE (255 * EDID_EXT_BLOCK_SIZE + sizeof(struct edid))
 #define I2C_ADDRESS_DDCCI 0x37
 #define DDCCI_TIMEOUT_MS 50
+
+/* Experimental capture-copy batching: 0/1 keep the existing per-row path. */
+static unsigned int evdi_copy_batch_rows;
+module_param_named(copy_batch_rows, evdi_copy_batch_rows, uint, 0644);
+MODULE_PARM_DESC(copy_batch_rows,
+	"Maximum contiguous full-width rows per capture copy (0/1: per-row)");
 
 struct evdi_painter {
 	bool is_connected;
@@ -224,6 +231,7 @@ static int copy_primary_pixels(struct evdi_framebuffer *efb,
 {
 	struct drm_framebuffer *fb = &efb->base;
 	struct drm_clip_rect *r;
+	const unsigned int batch_rows = READ_ONCE(evdi_copy_batch_rows);
 
 	EVDI_CHECKPT();
 
@@ -250,6 +258,30 @@ static int copy_primary_pixels(struct evdi_framebuffer *efb,
 
 		EVDI_VERBOSE("copy rect %d,%d-%d,%d\n", r->x1, r->y1, r->x2,
 			     r->y2);
+
+		/* Only combine complete rows with no source or destination padding.
+		 * Keep CPU-access bracketing in the caller and flush every byte before
+		 * copying it. Partial rectangles and pitched buffers retain the old path.
+		 */
+		if (batch_rows > 1 && byte_span > 0 && r->x1 == 0 &&
+		    r->x2 == max_x && fb->pitches[0] == (unsigned int)byte_span &&
+		    buf_byte_stride == byte_span) {
+			while (y > 0) {
+				const size_t rows = min_t(size_t, y, batch_rows);
+				size_t bytes;
+
+				if (check_mul_overflow((size_t)byte_span, rows, &bytes))
+					break; /* Preserve the per-row fallback on overflow. */
+#if defined(CONFIG_X86)
+				drm_clflush_virt_range((void *)src, bytes);
+#endif
+				if (copy_to_user(dst, src, bytes))
+					return -EFAULT;
+				src += bytes;
+				dst += bytes;
+				y -= rows;
+			}
+		}
 
 		for (; y > 0; --y) {
 #if defined(CONFIG_X86)
